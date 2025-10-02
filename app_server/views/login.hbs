@@ -7,15 +7,66 @@
     <p style="color: red;">{{error}}</p>
   {{/if}}
 
-  <form method="POST" action="/login">
-    <label>Email:</label>
-    <input type="email" name="email" required><br>
+  <form id="loginForm">
+    <label for="email">Email:</label>
+    <input id="email" type="email" name="email" required><br>
 
-    <label>Password:</label>
-    <input type="password" name="password" required><br>
+    <label for="password">Password:</label>
+    <input id="password" type="password" name="password" required><br>
 
     <button type="submit">Login</button>
   </form>
+
+  <p id="loginError" style="color:red; display:none;"></p>
 </div>
+
+<script>
+(function () {
+  const form = document.getElementById('loginForm');
+  const err  = document.getElementById('loginError');
+  const btn  = form.querySelector('button[type="submit"]');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Logging in…';
+
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const password = document.getElementById('password').value;
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.token) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Save JWT + role + email
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role || 'user');
+      localStorage.setItem('email', data.email || email);
+
+      // Redirect based on role
+      if (data.role === 'admin') {
+        window.location.href = 'http://localhost:4200/admin';
+      } else {
+        window.location.href = '/';
+      }
+    } catch (e2) {
+      err.textContent = e2.message;
+      err.style.display = 'block';
+      console.error('Login error:', e2);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Login';
+    }
+  });
+})();
+</script>
 
 {{> footer}}
