@@ -1,33 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8">
-  <title>Travlr Getaways</title>
-  <link rel="stylesheet" href="/css/style.css" type="text/css">
-</head>
-
-<body>
-  <div id="header">
-    <div id="logo">
-      <a href="/"><img src="/images/logo.png" alt="LOGO" height="100" width="200"></a>
-    </div>
-
-    <div id="navigation">
-      <ul class="nav navbar-nav">
-        <li><a href="/travel">Travel</a></li>
-        <li><a href="/news">News</a></li>
-        {{#if loggedIn}}
-        <li><a href="/reservations">Reservations</a></li>
-        <li><a href="/checkout">Checkout</a></li>
-        <li><a href="/logout">Logout</a></li>
-        {{else}}
-        <li><a href="/login">Login</a></li>
-        {{/if}}
-        <li><a href="/admin">Admin</a></li>
-        {{#unless loggedIn}}
-        <li><a href="/register">Register</a></li>
-        {{/unless}}
-      </ul>
-    </div>
+<div id="header" data-build="2025-10-02T09:55">
+  <div id="logo">
+    <a href="/"><img src="/images/logo.png" alt="LOGO" height="100" width="200"></a>
   </div>
+
+  <div id="navigation">
+    <ul class="nav navbar-nav" id="mainNav">
+      <li><a href="/travel">Travel</a></li>
+      <li><a href="/news">News</a></li>
+
+      <!-- Only for authenticated users -->
+      <li class="auth-only hidden"><a href="/reservations">Reservations</a></li>
+      <li class="auth-only hidden"><a href="/checkout">Checkout</a></li>
+
+      <!-- Shown when logged OUT -->
+      <li id="menuLogin"><a href="/login">Login</a></li>
+      <li id="menuRegister"><a href="/register">Register</a></li>
+      <li id="whoami" class="whoami"></li>
+
+      <!-- Shown when logged IN -->
+      <li id="menuLogout" class="hidden"><a href="#" id="logoutLink">Logout</a></li>
+
+      <!-- Admin tab (server will guard privileged actions) -->
+      <li><a href="/admin">Admin</a></li>
+    </ul>
+
+   
+    
+  </div>
+</div>
+
+<style>
+  .hidden { display: none !important; }
+</style>
+
+<script>
+  // Header auth/menu toggler — resilient and noisy (for debugging)
+  (function () {
+    const log = (...args) => console.log('[header]', ...args);
+
+    function qsa(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+    function show(sel) { qsa(sel).forEach(el => el.classList.remove('hidden')); }
+    function hide(sel) { qsa(sel).forEach(el => el.classList.add('hidden')); }
+
+    function updateHeaderAuth() {
+      try {
+        const token = localStorage.getItem('token');
+        const role  = localStorage.getItem('role')  || 'user';
+        const email = localStorage.getItem('email') || '';
+
+        // Elements that may/may not exist depending on the page
+        const who  = document.getElementById('whoami');
+
+        if (token) {
+          hide('#menuLogin, #menuRegister');
+          show('#menuLogout, .auth-only');
+          if (who) who.textContent = `Signed in as ${email}${role === 'admin' ? ' (admin)' : ''}`;
+          log('token present → show logout & authed menu');
+        } else {
+          show('#menuLogin, #menuRegister');
+          hide('#menuLogout, .auth-only');
+          if (who) who.textContent = '';
+          log('no token → show login/register');
+        }
+      } catch (e) {
+        console.warn('[header] updateHeaderAuth error', e);
+      }
+    }
+
+    function wireLogout() {
+      const outLink = document.getElementById('logoutLink');
+      if (!outLink) return;
+      outLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        try {
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          localStorage.removeItem('email');
+        } finally {
+          window.location.href = '/'; // hard reload so header runs on clean state
+        }
+      });
+    }
+
+    // Run on DOM ready
+    document.addEventListener('DOMContentLoaded', function () {
+      log('DOM ready on', location.pathname);
+      updateHeaderAuth();
+      wireLogout();
+    });
+
+    // Also handle bfcache restore
+    window.addEventListener('pageshow', function () {
+      updateHeaderAuth();
+    });
+
+    // Final pass after layout settles (helps if partial loads late)
+    setTimeout(updateHeaderAuth, 150);
+  })();
+</script>
+

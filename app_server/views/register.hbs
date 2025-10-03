@@ -1,13 +1,51 @@
-<h1>Register</h1>
-<form action="/register" method="POST">
-  <label for="name">Name:</label><br>
-  <input type="text" name="name" required><br>
+<form id="registerForm">
+  <label>Name</label>
+  <input id="name" type="text" required>
 
-  <label for="email">Email:</label><br>
-  <input type="email" name="email" required><br>
+  <label>Email</label>
+  <input id="email" type="email" required>
 
-  <label for="password">Password:</label><br>
-  <input type="password" name="password" required><br><br>
+  <label>Password</label>
+  <input id="password" type="password" required>
 
-  <button type="submit">Register</button>
+  <button type="submit">Create account</button>
 </form>
+
+<p id="registerError" style="display:none;color:red;"></p>
+
+<script>
+(function () {
+  const form = document.getElementById('registerForm');
+  const err  = document.getElementById('registerError');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();                 // <- stop normal POST /register
+    if (err) err.style.display = 'none';
+
+    const name     = document.getElementById('name').value.trim();
+    const email    = (document.getElementById('email').value || '').trim().toLowerCase();
+    const password = document.getElementById('password').value;
+
+    try {
+      const res  = await fetch('/api/register', { // <- POST to API
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.token) throw new Error(data.message || 'Registration failed');
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role',  data.role || 'user');
+      localStorage.setItem('email', data.email || email);
+      sessionStorage.setItem('justRegistered', '1');
+
+      // go home as signed-in user
+      window.location.href = '/';
+    } catch (e2) {
+      if (err) { err.textContent = e2.message; err.style.display = 'block'; }
+      else alert(e2.message);
+    }
+  });
+})();
+</script>
